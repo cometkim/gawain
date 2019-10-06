@@ -1,0 +1,36 @@
+FROM debian:stretch-slim AS dep-quickjs
+ENV QUICKJS_VERSION="2019-09-18"
+
+RUN apt update -y && apt install -y \
+    --no-install-recommends \
+        curl \
+        xz-utils \
+        g++ \
+        g++-multilib \
+        make \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src
+ADD "https://bellard.org/quickjs/quickjs-${QUICKJS_VERSION}.tar.xz" .
+RUN tar xvJf "quickjs-${QUICKJS_VERSION}.tar.xz" \
+    && mv "quickjs-${QUICKJS_VERSION}" "quickjs" \
+    && cd "quickjs" \
+    && make
+
+# Prepare GawainJS
+# Use source code until Gawain is available on NPM.
+FROM debian:stretch-slim AS dep-gawain
+
+RUN apt update -y && apt install -y \
+    --no-install-recommends \
+        git \
+        ca-certificates \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/local
+RUN git clone "https://github.com/cometkim/gawain.git" --depth=1 "tmp"
+RUN mkdir -p "gawain" \
+    && cp -r "tmp/src" "gawain" \
+    && cp -r "tmp/types" "gawain"
