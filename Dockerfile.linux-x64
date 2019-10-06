@@ -1,0 +1,58 @@
+FROM debian:stretch-slim AS dep-quickjs
+ENV QUICKJS_VERSION="2019-09-18"
+
+RUN apt update -y && apt install -y \
+    --no-install-recommends \
+        curl \
+        xz-utils \
+        g++ \
+        g++-multilib \
+        make \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src
+ADD "https://bellard.org/quickjs/quickjs-${QUICKJS_VERSION}.tar.xz" .
+RUN tar xvJf "quickjs-${QUICKJS_VERSION}.tar.xz" \
+    && mv "quickjs-${QUICKJS_VERSION}" "quickjs" \
+    && cd "quickjs" \
+    && make
+
+FROM debian:stretch-slim AS dep-gawain
+WORKDIR /usr/local/gawain
+COPY . .
+
+FROM dockcross/linux-x64:latest AS build-linux-x64
+LABEL maintainer="Hyeseong Kim <cometkim.kr@gmail.com>"
+
+ENV CUSTOM_BUILD_ENV=DOCKER_LINUX_X64
+
+RUN apt update -y && apt install -y \
+    --no-install-recommends \
+        libsdl2-dev \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=dep-quickjs /usr/src/quickjs /usr/src/quickjs
+COPY --from=dep-gawain /usr/local/gawain /usr/local/gawain
+RUN ln -s /usr/src/quickjs/qjsc /usr/bin/qjsc
+
+WORKDIR /usr/src/app
+VOLUME ["/output"]
+
+ONBUILD COPY src .
+ONBUILD RUN qjsc -c -m \
+    -M sdl.so,sdl \
+    -o "/tmp/qjsc-entrypoint.c" \
+    "index.mjs"
+ONBUILD RUN find "/usr/local/gawain/src" -name "*.c" -exec gcc \
+    -D"__CUSTOM_BUILD__=${CUSTOM_BUILD_ENV}" \
+    -I"/usr/include/SDL2" \
+    -I"/usr/src/quickjs" \
+    -I"/tmp" \
+    -c {} \;
+ONBUILD RUN gcc -o "/output/app" *.o \
+    -L"/usr/src/quickjs" -lquickjs \
+    -lSDL2 \
+    -lm \
+    -ldl

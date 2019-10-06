@@ -89,8 +89,8 @@ int main(int argc, char *argv[]) {
     size_t entrypoint_size;
 
 #ifdef __CUSTOM_BUILD__
-    entrypoint = index;
-    entrypoint_size = index_size;
+    entrypoint = qjsc_index;
+    entrypoint_size = qjsc_index_size;
 #else
     mz_zip_archive gawain_archive;
     memset(&gawain_archive, 0, sizeof(gawain_archive));
