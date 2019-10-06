@@ -28,21 +28,18 @@ RUN apt update -y && apt install -y \
 COPY --from=dep-quickjs /usr/src/quickjs /usr/src/quickjs
 COPY --from=dep-gawain /usr/local/gawain /usr/local/gawain
 RUN ln -s /usr/src/quickjs/qjsc /usr/bin/qjsc
+COPY docker-entry.sh /
+ENTRYPOINT ["/bin/bash"]
+CMD ["/docker-entry.sh"]
 
 ONBUILD COPY src .
 ONBUILD RUN qjsc -c -m \
     -M sdl.so,sdl \
     -o "/tmp/qjsc-entrypoint.c" \
-    $(find  . -name "*.mjs")
+    "index.mjs"
 ONBUILD RUN find "/usr/local/gawain/src/native" -name "*.c" -exec gcc \
     -D"__CUSTOM_BUILD__=${CUSTOM_BUILD_ENV}" \
     -I"/usr/include/SDL2" \
     -I"/usr/src/quickjs" \
     -I"/tmp" \
     -c {} \;
-ONBUILD RUN mkdir -p "/output"
-ONBUILD RUN gcc -o "/output/app" *.o \
-    -L"/usr/src/quickjs" -lquickjs \
-    -lSDL2 \
-    -lm \
-    -ldl
