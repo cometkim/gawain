@@ -9,8 +9,14 @@
     #include <windows.h>
     #include "libloaderapi.h"
 #endif
-#include "miniz.h"
+
 #include "quickjs-libc.h"
+
+#ifdef __CUSTOM_BUILD__
+#include "qjsc-entrypoint.c"
+#else
+
+#include "miniz.h"
 
 char *gawain_get_archive_path() {
     char *tmp;
@@ -76,10 +82,17 @@ int gawain_init_archive(mz_zip_archive *gawain_archive) {
     return result;
 }
 
+#endif // __CUSTOM_BUILD__
+
 int main(int argc, char *argv[]) {
-    mz_zip_archive gawain_archive;
-    size_t entrypoint_size;
     uint8_t *entrypoint;
+    size_t entrypoint_size;
+
+#ifdef __CUSTOM_BUILD__
+    entrypoint = index;
+    entrypoint_size = index_size;
+#else
+    mz_zip_archive gawain_archive;
     memset(&gawain_archive, 0, sizeof(gawain_archive));
     mz_bool is_init_archive_success = gawain_init_archive(&gawain_archive);
     if (!is_init_archive_success) {
@@ -88,6 +101,7 @@ int main(int argc, char *argv[]) {
     }
     entrypoint = mz_zip_reader_extract_file_to_heap(&gawain_archive, "entrypoint", &entrypoint_size, 0);
     mz_zip_reader_end(&gawain_archive);
+#endif
 
     JSRuntime *rt;
     JSContext *ctx;
@@ -104,6 +118,9 @@ int main(int argc, char *argv[]) {
     JS_FreeContext(ctx);
     JS_FreeRuntime(rt);
 
+#ifndef __CUSTOM_BUILD__
     mz_free(entrypoint);
+#endif
+
     return 0;
 }
