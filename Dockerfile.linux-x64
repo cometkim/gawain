@@ -31,8 +31,6 @@ RUN apt update -y && apt install -y \
 COPY --from=dep-quickjs /usr/src/quickjs /usr/src/quickjs
 COPY --from=dep-gawain /usr/local/gawain /usr/local/gawain
 RUN ln -s /usr/src/quickjs/qjsc /usr/bin/qjsc
-WORKDIR /usr/src/app
-
 ENTRYPOINT ["/bin/bash"]
 COPY docker-entry.sh /
 CMD ["/docker-entry.sh"]
